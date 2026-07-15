@@ -511,7 +511,7 @@
 
           const winningLine = findWinningLine(boardState, "o");
           if (winningLine) {
-            updateStatus("AI wins!");
+            updateStatus("🤖 AI Wins!");
             showWinningLine(winningLine);
             gameActive = false;
             isAIThinking = false;
@@ -519,8 +519,7 @@
           }
 
           if (boardState.every((value) => value)) {
-            updateStatus("Tie");
-            gameActive = false;
+        updateStatus("🎲 Draw!");
             isAIThinking = false;
             return;
           }
@@ -663,14 +662,19 @@
 
       const winningLine = findWinningLine(boardState, currentPlayer);
       if (winningLine) {
-        updateStatus(`${currentPlayer.toUpperCase()} wins!`);
+        if (gameMode === "ai") {
+          updateStatus("🏆 You Win!");
+        } else {
+          const winner = currentPlayer === "x" ? "X" : "O";
+          updateStatus(`🏆 Player ${winner} Wins!`);
+        }
         showWinningLine(winningLine);
         gameActive = false;
         return;
       }
 
       if (boardState.every((value) => value)) {
-        updateStatus("Tie");
+        updateStatus("🎲 Draw!");
         gameActive = false;
         return;
       }
