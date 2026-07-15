@@ -533,20 +533,14 @@
     }
 
     function showGameModeSelection() {
-      const board = document.getElementById("board");
       const actions = document.querySelector(".actions");
       const scoreboard = document.querySelector(".scoreboard");
 
-      board.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; padding: 40px 0;">
-          <h2 style="font-size: 1.5rem; margin: 0; color: var(--accent);">Select Game Mode</h2>
-          <button id="pvpBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">👥 Human vs Human</button>
-          <button id="aiBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🤖 Human vs AI</button>
-        </div>
-      `;
-
       scoreboard.style.display = "none";
-      actions.style.display = "none";
+      actions.innerHTML = `
+        <button id="pvpBtn" class="neon-button">👥 Human vs Human</button>
+        <button id="aiBtn" class="neon-button">🤖 Human vs AI</button>
+      `;
 
       document.getElementById("pvpBtn").addEventListener("click", () => {
         gameMode = "pvp";
@@ -559,15 +553,14 @@
     }
 
     function showDifficultySelection() {
-      const board = document.getElementById("board");
+      const actions = document.querySelector(".actions");
+      const scoreboard = document.querySelector(".scoreboard");
 
-      board.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; padding: 40px 0;">
-          <h2 style="font-size: 1.5rem; margin: 0; color: var(--accent);">Select Difficulty</h2>
-          <button id="easyBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🟢 Easy</button>
-          <button id="mediumBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🟡 Medium</button>
-          <button id="hardBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🔴 Hard</button>
-        </div>
+      scoreboard.style.display = "none";
+      actions.innerHTML = `
+        <button id="easyBtn" class="neon-button">🟢 Easy</button>
+        <button id="mediumBtn" class="neon-button">🟡 Medium</button>
+        <button id="hardBtn" class="neon-button">🔴 Hard</button>
       `;
 
       document.getElementById("easyBtn").addEventListener("click", () => {
@@ -611,7 +604,14 @@
       cells.push(...Array.from(document.querySelectorAll(".cell")));
 
       scoreboard.style.display = "grid";
+      actions.innerHTML = `<button id="restart" class="neon-button">Restart</button>`;
       actions.style.display = "flex";
+
+      document.getElementById("restart").addEventListener("click", () => {
+        gameMode = null;
+        aiDifficulty = null;
+        showGameModeSelection();
+      });
 
       resetBoard();
 
