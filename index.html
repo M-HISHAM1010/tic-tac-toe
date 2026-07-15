@@ -308,6 +308,20 @@
         font-size: 0.95rem;
       }
     }
+
+    .mode-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+      padding: 40px 0;
+    }
+
+    .mode-selector h2 {
+      font-size: 1.5rem;
+      margin: 0;
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -364,6 +378,9 @@
     let boardState = Array(9).fill("");
     let currentPlayer = "x";
     let gameActive = true;
+    let gameMode = null; // "pvp" or "ai"
+    let aiDifficulty = null; // "easy", "medium", "hard"
+    let isAIThinking = false;
 
     function updateStatus(message) {
       statusElement.textContent = message;
@@ -396,6 +413,211 @@
       winLine.classList.add(`line-${lineIndex}`);
     }
 
+    function countLine(position, player) {
+      let count = 0;
+      winningLines.forEach((line) => {
+        const lineCount = line.filter((index) => position[index] === player).length;
+        if (lineCount === 2 && line.some((index) => position[index] === "")) {
+          count += 10;
+        } else if (lineCount === 1) {
+          count += 1;
+        }
+      });
+      return count;
+    }
+
+    function evaluateBoard(position) {
+      const aiWin = findWinningLine(position, "o");
+      if (aiWin) return 100;
+
+      const playerWin = findWinningLine(position, "x");
+      if (playerWin) return -100;
+
+      const aiScore = countLine(position, "o");
+      const playerScore = countLine(position, "x");
+      return aiScore - playerScore;
+    }
+
+    function minimax(position, depth, isMaximizing, maxDepth) {
+      const available = getAvailableMoves(position);
+
+      if (findWinningLine(position, "o")) return 100 - depth;
+      if (findWinningLine(position, "x")) return -100 + depth;
+      if (available.length === 0) return 0;
+
+      if (depth >= maxDepth) return evaluateBoard(position);
+
+      if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let move of available) {
+          const newPosition = [...position];
+          newPosition[move] = "o";
+          const score = minimax(newPosition, depth + 1, false, maxDepth);
+          bestScore = Math.max(score, bestScore);
+        }
+        return bestScore;
+      } else {
+        let bestScore = Infinity;
+        for (let move of available) {
+          const newPosition = [...position];
+          newPosition[move] = "x";
+          const score = minimax(newPosition, depth + 1, true, maxDepth);
+          bestScore = Math.min(score, bestScore);
+        }
+        return bestScore;
+      }
+    }
+
+    function getAIMove() {
+      const available = getAvailableMoves(boardState);
+      if (available.length === 0) return null;
+
+      let maxDepth = 9;
+      if (aiDifficulty === "easy") {
+        return available[Math.floor(Math.random() * available.length)];
+      } else if (aiDifficulty === "medium") {
+        maxDepth = 6;
+        if (Math.random() < 0.3) {
+          return available[Math.floor(Math.random() * available.length)];
+        }
+      }
+
+      let bestScore = -Infinity;
+      let bestMove = available[0];
+
+      for (let move of available) {
+        const newPosition = [...boardState];
+        newPosition[move] = "o";
+        const score = minimax(newPosition, 0, false, maxDepth);
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
+      }
+
+      return bestMove;
+    }
+
+    function makeAIMove() {
+      if (!gameActive || isAIThinking) return;
+
+      isAIThinking = true;
+      updateStatus("AI is thinking...");
+
+      setTimeout(() => {
+        const move = getAIMove();
+        if (move !== null) {
+          applyMove(move, "o");
+
+          const winningLine = findWinningLine(boardState, "o");
+          if (winningLine) {
+            updateStatus("AI wins!");
+            showWinningLine(winningLine);
+            gameActive = false;
+            isAIThinking = false;
+            return;
+          }
+
+          if (boardState.every((value) => value)) {
+            updateStatus("Tie");
+            gameActive = false;
+            isAIThinking = false;
+            return;
+          }
+
+          setCurrentPlayer("x");
+          updateStatus("Your turn");
+        }
+        isAIThinking = false;
+      }, 800);
+    }
+
+    function showGameModeSelection() {
+      const board = document.getElementById("board");
+      const actions = document.querySelector(".actions");
+      const scoreboard = document.querySelector(".scoreboard");
+
+      board.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; padding: 40px 0;">
+          <h2 style="font-size: 1.5rem; margin: 0; color: var(--accent);">Select Game Mode</h2>
+          <button id="pvpBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">👥 Human vs Human</button>
+          <button id="aiBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🤖 Human vs AI</button>
+        </div>
+      `;
+
+      scoreboard.style.display = "none";
+      actions.style.display = "none";
+
+      document.getElementById("pvpBtn").addEventListener("click", () => {
+        gameMode = "pvp";
+        startGame();
+      });
+
+      document.getElementById("aiBtn").addEventListener("click", () => {
+        showDifficultySelection();
+      });
+    }
+
+    function showDifficultySelection() {
+      const board = document.getElementById("board");
+
+      board.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%; padding: 40px 0;">
+          <h2 style="font-size: 1.5rem; margin: 0; color: var(--accent);">Select Difficulty</h2>
+          <button id="easyBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🟢 Easy</button>
+          <button id="mediumBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🟡 Medium</button>
+          <button id="hardBtn" class="neon-button" style="padding: 18px 40px; font-size: 1.1rem;">🔴 Hard</button>
+        </div>
+      `;
+
+      document.getElementById("easyBtn").addEventListener("click", () => {
+        gameMode = "ai";
+        aiDifficulty = "easy";
+        startGame();
+      });
+
+      document.getElementById("mediumBtn").addEventListener("click", () => {
+        gameMode = "ai";
+        aiDifficulty = "medium";
+        startGame();
+      });
+
+      document.getElementById("hardBtn").addEventListener("click", () => {
+        gameMode = "ai";
+        aiDifficulty = "hard";
+        startGame();
+      });
+    }
+
+    function startGame() {
+      const board = document.getElementById("board");
+      const actions = document.querySelector(".actions");
+      const scoreboard = document.querySelector(".scoreboard");
+
+      board.innerHTML = `
+        <div class="win-line" id="winLine"></div>
+        <button class="cell" data-index="0"></button>
+        <button class="cell" data-index="1"></button>
+        <button class="cell" data-index="2"></button>
+        <button class="cell" data-index="3"></button>
+        <button class="cell" data-index="4"></button>
+        <button class="cell" data-index="5"></button>
+        <button class="cell" data-index="6"></button>
+        <button class="cell" data-index="7"></button>
+        <button class="cell" data-index="8"></button>
+      `;
+
+      cells.length = 0;
+      cells.push(...Array.from(document.querySelectorAll(".cell")));
+
+      scoreboard.style.display = "grid";
+      actions.style.display = "flex";
+
+      resetBoard();
+
+      cells.forEach((cell) => cell.addEventListener("click", handleCellClick));
+    }
+
     function getRandomStartingPlayer() {
       return Math.random() < 0.5 ? "x" : "o";
     }
@@ -403,13 +625,26 @@
     function resetBoard() {
       boardState = Array(9).fill("");
       gameActive = true;
+      isAIThinking = false;
       const startingPlayer = getRandomStartingPlayer();
       setCurrentPlayer(startingPlayer);
-      updateStatus(`Game on — ${startingPlayer.toUpperCase()} starts`);
+
+      if (gameMode === "ai") {
+        if (startingPlayer === "x") {
+          updateStatus("Your turn");
+        } else {
+          updateStatus("AI is thinking...");
+          setTimeout(makeAIMove, 500);
+        }
+      } else {
+        updateStatus(`Game on — ${startingPlayer.toUpperCase()} starts`);
+      }
+
       cells.forEach((cell) => {
         cell.classList.remove("active", "x", "o");
         cell.removeAttribute("data-symbol");
       });
+
       const winLine = document.getElementById("winLine");
       if (winLine) {
         winLine.className = "win-line";
@@ -420,7 +655,7 @@
       const cell = event.currentTarget;
       const index = Number(cell.dataset.index);
 
-      if (!gameActive || boardState[index]) {
+      if (!gameActive || boardState[index] || isAIThinking) {
         return;
       }
 
@@ -440,9 +675,14 @@
         return;
       }
 
-      const nextPlayer = currentPlayer === "x" ? "o" : "x";
-      setCurrentPlayer(nextPlayer);
-      updateStatus(`${nextPlayer.toUpperCase()} turn`);
+      if (gameMode === "ai") {
+        setCurrentPlayer("o");
+        makeAIMove();
+      } else {
+        const nextPlayer = currentPlayer === "x" ? "o" : "x";
+        setCurrentPlayer(nextPlayer);
+        updateStatus(`${nextPlayer.toUpperCase()} turn`);
+      }
     }
 
     function applyMove(index, player) {
@@ -452,9 +692,13 @@
       cell.dataset.symbol = player.toUpperCase();
     }
 
-    cells.forEach((cell) => cell.addEventListener("click", handleCellClick));
-    restartButton.addEventListener("click", resetBoard);
-    resetBoard();
+    restartButton.addEventListener("click", () => {
+      gameMode = null;
+      aiDifficulty = null;
+      showGameModeSelection();
+    });
+
+    showGameModeSelection();
   </script>
 </body>
 </html>
